@@ -1,5 +1,5 @@
 # Nikke-Files-Mover 
-- a CLI program that helps you move NIKKE data between your phone and an emulator or vice versa. It won't copy files that are already on the other device, which saves you time and space.
+a CLI program that helps you move NIKKE data between your phone and an emulator or vice versa. It won't copy files that are already on the other device, which saves you time and space.
 It also removes files on the outdated device that don't exist anymore on the updated device.
 # How To Use:
 - Open `adb_location.txt` and paste in the file location of `adb.exe`.  
