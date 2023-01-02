@@ -1,0 +1,1 @@
+C:\Program Files (x86)\Minimal ADB and Fastboot\adb.exe
