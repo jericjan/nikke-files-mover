@@ -1,7 +1,6 @@
 from pathlib import Path
 from subprocess import Popen, PIPE
 
-
 with open("adb_location.txt", encoding="utf-8") as f:    
     adb_location = f.read().strip()
 
@@ -69,17 +68,28 @@ def differentiate(path1, path2):
 
 def copy_new_files(adb_location):
     base_path = "/sdcard/Android/data/com.proximabeta.nikke/files/"
-
-    with Path("new_not_in_old.txt").open(encoding="utf-8") as f:
-        for line in f:
-            to_folder = local_files_folder / line[len(base_path) :]
-            to_folder = to_folder.parent
-            to_folder.mkdir(parents=True, exist_ok=True)
-            coms = [adb_location, "pull", line.strip(), str(to_folder)]
-            with Popen(coms, stdout=PIPE, stderr=PIPE, encoding="utf-8") as process:
-                stdout, stderr = process.communicate()
-            print(stdout)
-
+    with Path("old_not_in_new.txt").open(encoding="utf-8") as deletable:
+        deletable = deletable.read()
+        if deletable is True:
+            with Path("new_not_in_old.txt").open(encoding="utf-8") as movable:
+                for line in movable:
+                    to_folder = local_files_folder / line[len(base_path) :]
+                    to_folder = to_folder.parent
+                    to_folder.mkdir(parents=True, exist_ok=True)
+                    coms = [adb_location, "pull", line.strip(), str(to_folder)]
+                    with Popen(coms, stdout=PIPE, stderr=PIPE, encoding="utf-8") as process:
+                        stdout, stderr = process.communicate()
+                    print("copying files one by one")
+                    print(stdout)
+        else:
+            coms = [adb_location, "pull", f"{base_path}.", str(local_files_folder)]
+            with Popen(coms, stdout=PIPE, stderr=PIPE) as process:
+                while True:  # Could be more pythonic with := in Python3.8+
+                    line = process.stdout.readline()
+                    if not line and process.poll() is not None:
+                        break
+                    print("copying all files in new device's folder")
+                    print(line.decode())        
 
 def delete_unused_files(adb_location):
     with Path("old_not_in_new.txt").open(encoding="utf-8") as f:
@@ -89,6 +99,7 @@ def delete_unused_files(adb_location):
                 stdout, stderr = process.communicate()
             print(stdout)
             print(stderr)
+            print("Deleting unused files in old device. Please wait.")
 
 
 def copy_to_new(adb_location):
@@ -108,20 +119,68 @@ def connect_msg(step_num, name):
         f"({step_num}) Please ONLY connect the device that has the {name} and press ENTER..."
     )
 
+def do_continue(msg):
+    while True:
+        user_input = input(f"\n{msg}\nPress ENTER to continue or type \"n\" to skip.").lower()
+        if user_input == "":
+            return True
+        elif user_input == "n":
+            return False
+        else:
+            print("Try again.")
+        
 
-connect_msg(1, "updated NIKKE files")
-get_new_files()
+while True:
+    do_delete_files = input("Do you want to delete the log files? (y/n)").lower()
+    if do_delete_files == "y":
+        log_files = [x for x in Path('.').glob("*.txt") if x.name != "adb_location.txt"]
+        for x in log_files:
+            x.unlink(missing_ok=True)
+        break
+    elif do_delete_files == "n":
+        break
+    else:
+        print("Incorrect input. Try again")
 
-connect_msg(2, "old files")
-get_old_files()
+if not Path("new_ls.txt").exists():
+    connect_msg(1, "updated NIKKE files")
+    yes_continue = do_continue("This step will get the list of files on the new device.")    
+    if yes_continue:
+        get_new_files()
 
-differentiate("emu_ls.txt", "phone_ls.txt")
+if not Path("old_ls.txt").exists():
+    connect_msg(2, "old files")
+    yes_continue = do_continue("This step will get the list of files on the old device.")    
+    if yes_continue:    
+        get_old_files()
+
+yes_continue = do_continue("This step will get the difference of the files between the two devices.")    
+if yes_continue:   
+    differentiate("new_ls.txt", "old_ls.txt")
+
+with Path("old_not_in_new.txt").open(encoding="utf-8") as deletable:
+    deletable = deletable.read()
+with Path("new_not_in_old.txt").open(encoding="utf-8") as transferable:
+    transferable = transferable.read()
+    
+if deletable == "" and transferable == "":
+    print("Files match exactly. Exiting...")
+    exit()
 
 connect_msg(3, "updated NIKKE files")
-copy_new_files(adb_location)
+
+yes_continue = do_continue("This step will copy the new files that exist on the new device to the PC.")    
+if yes_continue:   
+    copy_new_files(adb_location)
 
 connect_msg(4, "old files")
-delete_unused_files(adb_location)
-copy_to_new(adb_location)
+
+yes_continue = do_continue("This step will delete unused files on the old device.")    
+if yes_continue:   
+    delete_unused_files(adb_location)
+    
+yes_continue = do_continue("This step will copy the new files from the PC to the old device.")    
+if yes_continue:      
+    copy_to_new(adb_location)
 
 print("Done!")
