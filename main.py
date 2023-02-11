@@ -70,16 +70,17 @@ def copy_new_files(adb_location):
     base_path = "/sdcard/Android/data/com.proximabeta.nikke/files/"
     with Path("old_not_in_new.txt").open(encoding="utf-8") as deletable:
         deletable = deletable.read()
-        if deletable is True:
+        if deletable != "":
             with Path("new_not_in_old.txt").open(encoding="utf-8") as movable:
-                for line in movable:
+                item_count = len(movable.readlines())
+                for idx, line in enumerate(movable):
                     to_folder = local_files_folder / line[len(base_path) :]
                     to_folder = to_folder.parent
                     to_folder.mkdir(parents=True, exist_ok=True)
                     coms = [adb_location, "pull", line.strip(), str(to_folder)]
                     with Popen(coms, stdout=PIPE, stderr=PIPE, encoding="utf-8") as process:
                         stdout, stderr = process.communicate()
-                    print("copying files one by one")
+                    print(f"({idx+1} \\ {item_count}) copying files one by one")
                     print(stdout)
         else:
             coms = [adb_location, "pull", f"{base_path}.", str(local_files_folder)]
@@ -93,13 +94,14 @@ def copy_new_files(adb_location):
 
 def delete_unused_files(adb_location):
     with Path("old_not_in_new.txt").open(encoding="utf-8") as f:
-        for line in f:
+        item_count = len(f.readlines())
+        for idx, line in enumerate(f):
             coms = [adb_location, "shell", "rm", line.strip()]
             with Popen(coms, stdout=PIPE, stderr=PIPE, encoding="utf-8") as process:
                 stdout, stderr = process.communicate()
             print(stdout)
             print(stderr)
-            print("Deleting unused files in old device. Please wait.")
+            print(f"({idx+1} \\ {item_count}) Deleting unused files in old device. Please wait.")
 
 
 def copy_to_new(adb_location):
